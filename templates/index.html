@@ -12,6 +12,8 @@
             {% for img in images %}
                 <li>
                     <img src="{{ url_for('static', filename='images/' + img) }}" width="400"><br>
+                    <img src="{{ url_for('images', filename='зображення_viber_2025-10-23_21-32-13-533.jpg') }}" width="400" alt="Фото Viber"><br>
+                    <a href="{{ url_for('download_image', filename='зображення_viber_2025-10-23_21-32-13-533.jpg') }}" download>⬇️ Скачати це зображення</a>
                     <a href="{{ url_for('download_image', filename=img) }}" download>⬇️ Скачати {{ img }}</a>
                 </li>
                 <hr>
