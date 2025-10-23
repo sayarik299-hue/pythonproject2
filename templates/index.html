@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -8,24 +7,31 @@
 <body>
     <h1>Галерея 4К зображень</h1>
 
+    <!-- Головна галерея -->
     {% if images %}
         <ul>
             {% for img in images %}
-                <li>
-                    <img src="{{ url_for('images', filename=img) }}" width="400" alt="{{ img }}"><br>
-                    <a href="{{ url_for('download_image', filename=img) }}" download>⬇️ Скачати {{ img }}</a>
-                </li>
-                <hr>
+                {% if img not in ['зображення_viber_2025-10-23_21-32-13-533.jpg', 'зображення_viber_2025-10-23_21-34-26-430.jpg'] %}
+                    <li>
+                        <img src="{{ url_for('static', filename='images/' + img) }}" width="400" alt="{{ img }}"><br>
+                        <a href="{{ url_for('download_image', filename=img) }}" download>⬇️ Скачати {{ img }}</a>
+                    </li>
+                    <hr>
+                {% endif %}
             {% endfor %}
         </ul>
     {% else %}
         <p>Немає зображень для показу.</p>
     {% endif %}
 
-    <!-- Окреме фото -->
-    <h2>Окреме фото:</h2>
-    <img src="{{ url_for('images', filename='зображення_viber_2025-10-23_21-32-13-533.jpg') }}" width="400" alt="Фото Viber"><br>
-    <a href="{{ url_for('download_image', filename='зображення_viber_2025-10-23_21-32-13-533.jpg') }}" download>⬇️ Скачати це зображення</a>
+    <!-- Розділ "Окремі фото" -->
+    <h2>Окремі фото:</h2>
+
+    <img src="{{ url_for('static', filename='images/зображення_viber_2025-10-23_21-32-13-533.jpg') }}" width="400" alt="Фото 1"><br>
+    <a href="{{ url_for('download_image', filename='зображення_viber_2025-10-23_21-32-13-533.jpg') }}" download>⬇️ Скачати Фото 1</a><br><br>
+
+    <img src="{{ url_for('static', filename='images/зображення_viber_2025-10-23_21-34-26-430.jpg') }}" width="400" alt="Фото 2"><br>
+    <a href="{{ url_for('download_image', filename='зображення_viber_2025-10-23_21-34-26-430.jpg') }}" download>⬇️ Скачати Фото 2</a>
 
 </body>
 </html>
