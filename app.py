@@ -7,10 +7,17 @@ IMAGE_FOLDER = os.path.join('static', 'images')
 
 @app.route('/')
 def index():
+    # Отримуємо список файлів у папці images
     images = os.listdir(IMAGE_FOLDER)
     return render_template('index.html', images=images)
 
-@app.route('/download/<filename>')
+# Маршрут для відображення зображень
+@app.route('/images/<path:filename>')
+def images(filename):
+    return send_from_directory(IMAGE_FOLDER, filename)
+
+# Маршрут для скачування зображень
+@app.route('/download/<path:filename>')
 def download_image(filename):
     return send_from_directory(IMAGE_FOLDER, filename, as_attachment=True)
 
