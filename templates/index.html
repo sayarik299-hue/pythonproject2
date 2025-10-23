@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Скачування 4К зображень</title>
+</head>
+<body>
+    <h1>Галерея 4К зображень</h1>
+
+    {% if images %}
+        <ul>
+            {% for img in images %}
+                <li>
+                    <img src="{{ url_for('static', filename='images/' + img) }}" width="400"><br>
+                    <a href="{{ url_for('download_image', filename=img) }}" download>⬇️ Скачати {{ img }}</a>
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Немає зображень для показу.</p>
+    {% endif %}
+</body>
+</html>
