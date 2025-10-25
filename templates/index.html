@@ -1,55 +1,29 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Мій чат з Groq</title>
-  <link rel="stylesheet" href="/static/chat.css">
+    <meta charset="UTF-8">
+    <title>Chat Bot</title>
 </head>
 <body>
-  <div class="container">
-    <header><h1>Чат з Groq</h1></header>
-    <main id="chat"></main>
-    <form id="form">
-      <input id="input" placeholder="Напиши повідомлення..." autocomplete="off" autofocus>
-      <button type="submit">Відправити</button>
-    </form>
-  </div>
+    <h1>Chat Bot</h1>
+    <input type="text" id="userMessage" placeholder="Напиши повідомлення">
+    <button onclick="sendMessage()">Відправити</button>
+    <div id="chatLog"></div>
 
-  <script>
-    const form = document.getElementById("form");
-    const input = document.getElementById("input");
-    const chat = document.getElementById("chat");
-
-    function addMsg(role, text) {
-      const div = document.createElement("div");
-      div.className = "msg " + role;
-      div.textContent = text;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const msg = input.value.trim();
-      if (!msg) return;
-      addMsg("user", msg);
-      input.value = "";
-      addMsg("bot", "Думаю...");
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({message: msg})
-        });
-        const data = await res.json();
-        const lastBot = document.querySelectorAll(".msg.bot");
-        lastBot[lastBot.length - 1].textContent = data.answer || data.error;
-      } catch (err) {
-        alert("Помилка: " + err.message);
-      }
-    });
-  </script>
+    <script>
+        async function sendMessage() {
+            const message = document.getElementById("userMessage").value;
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({message})
+            });
+            const data = await response.json();
+            const chatLog = document.getElementById("chatLog");
+            chatLog.innerHTML += `<p><b>Ти:</b> ${message}</p>`;
+            chatLog.innerHTML += `<p><b>Бот:</b> ${data.reply}</p>`;
+            document.getElementById("userMessage").value = "";
+        }
+    </script>
 </body>
 </html>
