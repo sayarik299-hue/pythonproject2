@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Chat Bot</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #chatLog { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-top: 10px; }
+        input { width: 70%; padding: 5px; }
+        button { padding: 5px 10px; }
+        p { margin: 5px 0; }
+        b { color: #333; }
+    </style>
 </head>
 <body>
     <h1>Chat Bot</h1>
@@ -12,16 +20,28 @@
 
     <script>
         async function sendMessage() {
-            const message = document.getElementById("userMessage").value;
+            const message = document.getElementById("userMessage").value.trim();
+            if (!message) return;
+
             const response = await fetch("/chat", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({message})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message })
             });
+
             const data = await response.json();
             const chatLog = document.getElementById("chatLog");
-            chatLog.innerHTML += `<p><b>Ти:</b> ${message}</p>`;
-            chatLog.innerHTML += `<p><b>Бот:</b> ${data.reply}</p>`;
+
+            // Додаємо повідомлення до чату
+            const userMsg = document.createElement("p");
+            userMsg.innerHTML = `<b>Ти:</b> ${message}`;
+            chatLog.appendChild(userMsg);
+
+            const botMsg = document.createElement("p");
+            botMsg.innerHTML = `<b>Бот:</b> ${data.reply}`;
+            chatLog.appendChild(botMsg);
+
+            chatLog.scrollTop = chatLog.scrollHeight; // прокрутка вниз
             document.getElementById("userMessage").value = "";
         }
     </script>

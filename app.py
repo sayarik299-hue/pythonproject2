@@ -4,12 +4,10 @@ import requests
 
 app = Flask(__name__)
 
-# Рендеримо головну сторінку з чат-боксом
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# Роут для чату
 @app.route("/chat", methods=["POST"])
 def chat():
     user_message = request.json.get("message")
@@ -27,17 +25,19 @@ def chat():
         "max_output_tokens": 200
     }
 
-    response = requests.post(
-        "https://api.groq.com/v1/completions",
-        headers=headers,
-        json=data
-    )
-
-    if response.status_code != 200:
-        return jsonify({"error": "API request failed", "details": response.text}), 500
+    try:
+        response = requests.post(
+            "https://api.groq.com/v1/completions",
+            headers=headers,
+            json=data
+        )
+        response.raise_for_status()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
     res_json = response.json()
-    bot_reply = res_json["choices"][0]["text"]  # беремо текст відповіді
+    # Перевіряємо структуру, щоб не було undefined
+    bot_reply = res_json.get("choices", [{}])[0].get("text", "Бот нічого не відповів")
 
     return jsonify({"reply": bot_reply})
 
