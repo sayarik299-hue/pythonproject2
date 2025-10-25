@@ -2,20 +2,22 @@ from flask import Flask, request, jsonify, render_template_string
 import requests, os
 
 app = Flask(__name__)
-GROQ_API_KEY = os.getenv("GROQ_API_KEYS")
+GROQ_API_KEY = os.getenv("GROQ_API_KEYS")  # твій ключ Groq
 
 
 # Головна сторінка
 @app.route("/")
 def index():
     html = """
-    <input id="userMessage" placeholder="Напиши щось...">
+    <h2>Groq Chat</h2>
+    <input id="userMessage" placeholder="Напиши щось..." style="width:300px;">
     <button onclick="sendMessage()">Відправити</button>
-    <div id="botReply"></div>
+    <div id="botReply" style="margin-top:10px;"></div>
 
     <script>
     async function sendMessage() {
         const msg = document.getElementById("userMessage").value;
+        if(!msg) return;
         const res = await fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -34,7 +36,7 @@ def index():
 def chat():
     user_message = request.json.get("message", "")
 
-    url = "https://api.groq.com/v1/models/groq-model/completions"  # заміни на актуальну модель
+    url = "https://api.groq.com/v1/models/groq-model/completions"  # заміни на актуальну модель Groq
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
@@ -44,14 +46,9 @@ def chat():
         "max_tokens": 150
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code != 200:
-        return jsonify({"error": response.text}), response.status_code
-
-    data = response.json()
-    bot_reply = data.get("choices", [{}])[0].get("text", "Помилка")
-    return jsonify({"bot": bot_reply})
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        bot_reply = data.get("choices", [{}])[0].get("text", "Помилка")
+        return jsonify({"bot": bot_reply})
