@@ -1,30 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <title>Скачування 4К зображень</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Мій чат з Groq</title>
+  <link rel="stylesheet" href="/static/chat.css">
 </head>
 <body>
-    <h1>Галерея 4К зображень</h1>
+  <div class="container">
+    <header><h1>Чат з Groq</h1></header>
+    <main id="chat"></main>
+    <form id="form">
+      <input id="input" placeholder="Напиши повідомлення..." autocomplete="off" autofocus>
+      <button type="submit">Відправити</button>
+    </form>
+  </div>
 
-    <!-- Головна галерея -->
-    {% if images %}
-        <ul>
-            {% for img in images %}
-                {% if img not in ['зображення_viber_2025-10-23_21-32-13-533.jpg', 'зображення_viber_2025-10-23_21-34-26-430.jpg'] %}
-                    <li>
-                        <img src="{{ url_for('static', filename='images/' + img) }}" width="400" alt="{{ img }}"><br>
-                        <a href="{{ url_for('download_image', filename=img) }}" download>⬇️ Скачати {{ img }}</a>
-                    </li>
-                    <hr>
-                {% endif %}
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Немає зображень для показу.</p>
-    {% endif %}
+  <script>
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const chat = document.getElementById("chat");
 
-   
+    function addMsg(role, text) {
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
 
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = input.value.trim();
+      if (!msg) return;
+      addMsg("user", msg);
+      input.value = "";
+      addMsg("bot", "Думаю...");
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({message: msg})
+        });
+        const data = await res.json();
+        const lastBot = document.querySelectorAll(".msg.bot");
+        lastBot[lastBot.length - 1].textContent = data.answer || data.error;
+      } catch (err) {
+        alert("Помилка: " + err.message);
+      }
+    });
+  </script>
 </body>
 </html>
