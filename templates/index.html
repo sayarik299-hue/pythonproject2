@@ -1,49 +1,55 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <title>Chat Bot</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        #chatLog { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-top: 10px; }
-        input { width: 70%; padding: 5px; }
-        button { padding: 5px 10px; }
-        p { margin: 5px 0; }
-        b { color: #333; }
-    </style>
+<meta charset="UTF-8">
+<title>Chat Bot</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+#chatLog { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
+input { width: 70%; padding: 5px; }
+button { padding: 5px 10px; }
+p { margin: 5px 0; }
+b { color: #333; }
+</style>
 </head>
 <body>
-    <h1>Chat Bot</h1>
-    <input type="text" id="userMessage" placeholder="Напиши повідомлення">
-    <button onclick="sendMessage()">Відправити</button>
-    <div id="chatLog"></div>
+<h1>Chat Bot</h1>
+<input id="userMessage" placeholder="Напиши повідомлення">
+<button onclick="sendMessage()">Відправити</button>
+<div id="chatLog"></div>
 
-    <script>
-        async function sendMessage() {
-            const message = document.getElementById("userMessage").value.trim();
-            if (!message) return;
+<script>
+async function sendMessage() {
+    const msg = document.getElementById("userMessage").value.trim();
+    if (!msg) return;
 
-            const response = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message })
-            });
+    const chatLog = document.getElementById("chatLog");
 
-            const data = await response.json();
-            const chatLog = document.getElementById("chatLog");
+    // Додаємо твоє повідомлення
+    const userMsg = document.createElement("p");
+    userMsg.innerHTML = `<b>Ти:</b> ${msg}`;
+    chatLog.appendChild(userMsg);
 
-            // Додаємо повідомлення до чату
-            const userMsg = document.createElement("p");
-            userMsg.innerHTML = `<b>Ти:</b> ${message}`;
-            chatLog.appendChild(userMsg);
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        // Додаємо відповідь бота, точно без undefined
+        const botMsg = document.createElement("p");
+        botMsg.innerHTML = `<b>Бот:</b> ${data.reply || "Бот нічого не відповів"}`;
+        chatLog.appendChild(botMsg);
+    } catch (err) {
+        const errMsg = document.createElement("p");
+        errMsg.innerHTML = `<b>Бот:</b> Помилка при з'єднанні з сервером`;
+        chatLog.appendChild(errMsg);
+    }
 
-            const botMsg = document.createElement("p");
-            botMsg.innerHTML = `<b>Бот:</b> ${data.reply}`;
-            chatLog.appendChild(botMsg);
-
-            chatLog.scrollTop = chatLog.scrollHeight; // прокрутка вниз
-            document.getElementById("userMessage").value = "";
-        }
-    </script>
+    chatLog.scrollTop = chatLog.scrollHeight;
+    document.getElementById("userMessage").value = "";
+}
+</script>
 </body>
 </html>
