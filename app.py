@@ -4,7 +4,7 @@ import requests
 
 app = Flask(__name__)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 @app.route("/")
 def index():
