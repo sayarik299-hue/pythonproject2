@@ -1,54 +1,59 @@
-from flask import Flask, request, jsonify, render_template_string
-import requests, os
+from flask import Flask, request, jsonify, render_template
+import os
+import requests
 
 app = Flask(__name__)
-GROQ_API_KEY = os.getenv("GROQ_API_KEYS")  # твій ключ Groq
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Головна сторінка
 @app.route("/")
 def index():
-    html = """
-    <h2>Groq Chat</h2>
-    <input id="userMessage" placeholder="Напиши щось..." style="width:300px;">
-    <button onclick="sendMessage()">Відправити</button>
-    <div id="botReply" style="margin-top:10px;"></div>
+    return render_template("index.html")
 
-    <script>
-    async function sendMessage() {
-        const msg = document.getElementById("userMessage").value;
-        if(!msg) return;
-        const res = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: msg })
-        });
-        const data = await res.json();
-        document.getElementById("botReply").innerText = data.bot || data.error;
-    }
-    </script>
-    """
-    return render_template_string(html)
-
-
-# API для чату
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_message = request.json.get("message", "")
+    data = request.json
+    prompt = data.get("prompt", "").strip()
 
-    url = "https://api.groq.com/v1/models/groq-model/completions"  # заміни на актуальну модель Groq
+    if not prompt:
+        return jsonify({"error": "Порожній запит!"}), 400
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
+
+    # Системне повідомлення — тільки українська або англійська
     payload = {
-        "prompt": user_message,
-        "max_tokens": 150
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "Відповідай лише українською або англійською мовою. "
+                    "Ігноруй інші мови. Не пиши текст іншою мовою."
+                )
+            },
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.5,
+        "max_tokens": 700
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload
+        )
         response.raise_for_status()
-        data = response.json()
-        bot_reply = data.get("choices", [{}])[0].get("text", "Помилка")
-        return jsonify({"bot": bot_reply})
+        result = response.json()
+        answer = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        return jsonify({"response": answer})
+    except requests.exceptions.RequestException as e:
+        print("Помилка запиту до Groq:", str(e))
+        return jsonify({"error": "Помилка запиту до API"}), 500
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)

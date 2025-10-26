@@ -1,55 +1,109 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<title>Chat Bot</title>
-<style>
-body { font-family: Arial; padding: 20px; }
-#chatLog { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
-input { width: 70%; padding: 5px; }
-button { padding: 5px 10px; }
-p { margin: 5px 0; }
-b { color: #333; }
-</style>
+    <meta charset="UTF-8">
+    <title>Чат з Ботом</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
 </head>
 <body>
-<h1>Chat Bot</h1>
-<input id="userMessage" placeholder="Напиши повідомлення">
-<button onclick="sendMessage()">Відправити</button>
-<div id="chatLog"></div>
+    <div class="container">
+        <header>
+            <h1>Чат</h1>
+        </header>
 
-<script>
-async function sendMessage() {
-    const msg = document.getElementById("userMessage").value.trim();
-    if (!msg) return;
+        <main id="chat"></main>
 
-    const chatLog = document.getElementById("chatLog");
+        <form onsubmit="sendMessage(event)">
+            <input type="text" id="message" placeholder="Напишіть повідомлення..." autocomplete="off">
+            <button type="submit" id="sendBtn">Відправити</button>
+            <button type="button" id="stopBtn">STOP</button>
+        </form>
 
-    // Додаємо твоє повідомлення
-    const userMsg = document.createElement("p");
-    userMsg.innerHTML = `<b>Ти:</b> ${msg}`;
-    chatLog.appendChild(userMsg);
+        <div class="footer">Зроблено на базі Groq</div>
+    </div>
 
-    try {
-        const res = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: msg })
+    <script>
+        let typingIndicator;
+        let isBotTyping = false;
+        let stopTyping = false;
+
+        const stopBtn = document.getElementById("stopBtn");
+        stopBtn.addEventListener("click", () => {
+            stopTyping = true;
         });
-        const data = await res.json();
-        // Додаємо відповідь бота, точно без undefined
-        const botMsg = document.createElement("p");
-        botMsg.innerHTML = `<b>Бот:</b> ${data.reply || "Бот нічого не відповів"}`;
-        chatLog.appendChild(botMsg);
-    } catch (err) {
-        const errMsg = document.createElement("p");
-        errMsg.innerHTML = `<b>Бот:</b> Помилка при з'єднанні з сервером`;
-        chatLog.appendChild(errMsg);
-    }
 
-    chatLog.scrollTop = chatLog.scrollHeight;
-    document.getElementById("userMessage").value = "";
-}
-</script>
+        async function sendMessage(event) {
+            event.preventDefault();
+            if (isBotTyping) return;
+
+            const input = document.getElementById("message");
+            const text = input.value.trim();
+            if (!text) return;
+
+            addMessage(text, "user");
+            input.value = "";
+
+            isBotTyping = true;
+            stopTyping = false;
+            showTypingIndicator();
+
+            try {
+                const res = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: text })
+                });
+                const data = await res.json();
+                hideTypingIndicator();
+
+                if (!stopTyping && data.response) {
+                    await typeMessage(data.response, "bot");
+                }
+            } catch (err) {
+                hideTypingIndicator();
+                if (!stopTyping) addMessage("⚠️ Помилка з'єднання з сервером", "bot");
+            } finally {
+                isBotTyping = false;
+            }
+        }
+
+        function addMessage(text, type) {
+            const chat = document.getElementById("chat");
+            const msg = document.createElement("div");
+            msg.className = "msg " + type;
+            msg.textContent = text;
+            chat.appendChild(msg);
+            chat.scrollTop = chat.scrollHeight;
+            return msg;
+        }
+
+        function showTypingIndicator() {
+            const chat = document.getElementById("chat");
+            typingIndicator = document.createElement("div");
+            typingIndicator.className = "msg bot typing";
+            typingIndicator.innerHTML = "<span></span><span></span><span></span>";
+            chat.appendChild(typingIndicator);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            if (typingIndicator) typingIndicator.remove();
+        }
+
+        async function typeMessage(text, type) {
+            const chat = document.getElementById("chat");
+            const msg = document.createElement("div");
+            msg.className = "msg " + type;
+            chat.appendChild(msg);
+
+            for (let i = 0; i < text.length; i++) {
+                if (stopTyping) break;
+                msg.textContent += text[i];
+                chat.scrollTop = chat.scrollHeight;
+                await new Promise(r => setTimeout(r, 30)); // затримка 30мс на літеру
+            }
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
 </body>
 </html>
