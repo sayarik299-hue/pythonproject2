@@ -4,10 +4,136 @@
 <meta charset="UTF-8">
 <title>Чат з Ботом</title>
 <link rel="stylesheet" href="static/chat.css">
+<style>
+:root {
+    --bg-body: #1c1c1c;
+    --text-body: #e6eef6;
+    --bg-container: #2b2b2b;
+    --bg-user: #3a3a3a;
+    --bg-bot: #444;
+    --text-bot: #e6eef6;
+    --glow-color: #00ffff;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", sans-serif;
+    background: var(--bg-body);
+    color: var(--text-body);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    transition: background 0.3s, color 0.3s;
+}
+
+.container {
+    width: 90%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    background: var(--bg-container);
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 0 25px rgba(0,0,0,.5);
+    transition: background 0.3s;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+header h1 { margin: 0; }
+
+main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+}
+
+.msg {
+    padding: 10px 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    max-width: 80%;
+    white-space: pre-wrap;
+    word-break: break-word;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: slideIn 0.3s forwards;
+}
+
+.msg.user {
+    background: var(--bg-user);
+    color: #fff;
+    margin-left: auto;
+    box-shadow: 0 0 8px rgba(0,255,255,0.3);
+}
+
+.msg.bot {
+    background: var(--bg-bot);
+    color: var(--text-bot);
+    margin-right: auto;
+    box-shadow: 0 0 8px rgba(0,255,255,0.2);
+}
+
+.msg.bot a {
+    color: #4fc3f7;
+    text-decoration: underline;
+}
+
+.msg.typing span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 2px;
+    background: var(--text-bot);
+    border-radius: 50%;
+    animation: blink 1s infinite;
+}
+
+.msg.typing span:nth-child(2) { animation-delay: 0.2s; }
+.msg.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
+@keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+
+form { display: flex; gap: 6px; margin-top: 8px; }
+input { flex: 1; padding: 10px; border-radius: 6px; border: none; outline: none; }
+button { padding: 10px 12px; border-radius: 6px; border: none; cursor: pointer; }
+
+#stopBtn { background: #c0392b; color: #fff; }
+#sendBtn { background: #555; color: #fff; }
+#clearBtn { background: #8e44ad; color: #fff; }
+#speedRange { width: 120px; }
+
+.footer { text-align: center; margin-top: 8px; font-size: 0.85em; color: #aaa; }
+</style>
 </head>
 <body>
-<div class="container">
-    <header><h1>Чат</h1></header>
+<div class="container" id="container">
+    <header>
+        <h1>Чат</h1>
+        <div>
+            <label>Тема:
+                <select id="themeSelect">
+                    <option value="dark">Темна</option>
+                    <option value="light">Світла</option>
+                </select>
+            </label>
+            <button id="fullscreenBtn">⛶</button>
+            <button id="clearBtn">🧹 Очистити чат</button>
+        </div>
+    </header>
 
     <main id="chat"></main>
 
@@ -15,6 +141,9 @@
         <input type="text" id="message" placeholder="Напишіть повідомлення..." autocomplete="off">
         <button type="submit" id="sendBtn">Відправити</button>
         <button type="button" id="stopBtn" disabled>STOP</button>
+        <label>Швидкість:
+            <input type="range" id="speedRange" min="10" max="150" value="80">
+        </label>
     </form>
 
     <div class="footer">Зроблено на базі Groq</div>
@@ -29,12 +158,43 @@ let fullResponseCache = "";
 const stopBtn = document.getElementById("stopBtn");
 const inputField = document.getElementById("message");
 const sendBtn = document.getElementById("sendBtn");
+const speedRange = document.getElementById("speedRange");
+const themeSelect = document.getElementById("themeSelect");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const clearBtn = document.getElementById("clearBtn");
+const chat = document.getElementById("chat");
 
+// === ВІДНОВЛЕННЯ ІСТОРІЇ ===
+window.addEventListener("load", () => {
+    const savedChat = JSON.parse(localStorage.getItem("chatHistory") || "[]");
+    savedChat.forEach(m => addMessage(m.text, m.type, false));
+    chat.scrollTop = chat.scrollHeight;
+});
+
+// === ПОВНОЕКРАННИЙ РЕЖИМ ===
+fullscreenBtn.addEventListener("click", () => {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+});
+
+// === ТЕМА ===
+themeSelect.addEventListener("change", () => setTheme(themeSelect.value));
+
+// === СТОП ===
 stopBtn.addEventListener("click", () => {
     if (!isBotTyping) return;
     stopPressed = true;
 });
 
+// === ОЧИСТКА ЧАТУ ===
+clearBtn.addEventListener("click", () => {
+    if (confirm("Очистити історію чату?")) {
+        chat.innerHTML = "";
+        localStorage.removeItem("chatHistory");
+    }
+});
+
+// === НАДСИЛАННЯ ===
 async function sendMessage(event) {
     event.preventDefault();
     if (isBotTyping) return;
@@ -51,21 +211,15 @@ async function sendMessage(event) {
     showTypingIndicator();
     isBotTyping = true;
     stopPressed = false;
-    fullResponseCache = "";
 
     try {
-        const res = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: text })
-        });
-
-        const data = await res.json();
+        await new Promise(r => setTimeout(r, 700));
+        const responseText = await getBotResponse(text);
         hideTypingIndicator();
 
-        fullResponseCache = data.response || data.error || "⚠️ Немає відповіді";
-        await typeBotMessage(fullResponseCache);
-    } catch (err) {
+        const speed = parseInt(speedRange.value);
+        await typeBotMessage(responseText, speed);
+    } catch {
         hideTypingIndicator();
         addMessage("⚠️ Помилка з'єднання з сервером", "bot");
     }
@@ -75,50 +229,92 @@ async function sendMessage(event) {
     inputField.disabled = false;
     sendBtn.disabled = false;
     inputField.focus();
+    saveChatHistory();
 }
 
-function addMessage(text, type) {
-    const chat = document.getElementById("chat");
+// === ДОДАЄ ПОВІДОМЛЕННЯ ===
+function addMessage(text, type, save = true) {
     const msg = document.createElement("div");
     msg.className = "msg " + type;
-    msg.textContent = text;
+    msg.innerHTML = linkify(text);
     chat.appendChild(msg);
-
-    // Автоскрол
     chat.scrollTop = chat.scrollHeight;
-
+    if (save) saveChatHistory();
     return msg;
 }
 
+// === ІНДИКАТОР НАБОРУ ===
 function showTypingIndicator() {
-    const chat = document.getElementById("chat");
     typingIndicator = document.createElement("div");
     typingIndicator.className = "msg bot typing";
     typingIndicator.innerHTML = "<span></span><span></span><span></span>";
     chat.appendChild(typingIndicator);
     chat.scrollTop = chat.scrollHeight;
 }
+function hideTypingIndicator() { if (typingIndicator) typingIndicator.remove(); }
 
-function hideTypingIndicator() {
-    if (typingIndicator) typingIndicator.remove();
-}
-
-async function typeBotMessage(text) {
+// === НАБІР ТЕКСТУ ===
+async function typeBotMessage(text, speed) {
     const msg = addMessage("", "bot");
-    const typingSpeed = 25;
-
     for (let i = 0; i < text.length; i++) {
         if (stopPressed) {
-            msg.textContent = text;
+            msg.innerHTML = linkify(text);
             break;
         }
         msg.textContent += text[i];
-        msg.parentElement.scrollTop = msg.parentElement.scrollHeight;
-        await new Promise(r => setTimeout(r, typingSpeed));
-        if ([".", ",", "!", "?"].includes(text[i])) {
-            await new Promise(r => setTimeout(r, 120));
-        }
+        chat.scrollTop = chat.scrollHeight;
+        await new Promise(r => setTimeout(r, 160 - speed));
     }
+    saveChatHistory();
+}
+
+// === КЛІКАБЕЛЬНІ ПОСИЛАННЯ ===
+function linkify(text) {
+    const urlPattern = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlPattern, '<a href="$1" target="_blank">$1</a>');
+}
+
+// === ТЕМИ ===
+function setTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.style.setProperty('--bg-body', '#1c1c1c');
+        document.documentElement.style.setProperty('--text-body', '#e6eef6');
+        document.documentElement.style.setProperty('--bg-container', '#2b2b2b');
+        document.documentElement.style.setProperty('--bg-user', '#3a3a3a');
+        document.documentElement.style.setProperty('--bg-bot', '#444');
+        document.documentElement.style.setProperty('--text-bot', '#e6eef6');
+    } else {
+        document.documentElement.style.setProperty('--bg-body', '#f5f5f5');
+        document.documentElement.style.setProperty('--text-body', '#222');
+        document.documentElement.style.setProperty('--bg-container', '#fff');
+        document.documentElement.style.setProperty('--bg-user', '#ddd');
+        document.documentElement.style.setProperty('--bg-bot', '#eee');
+        document.documentElement.style.setProperty('--text-bot', '#222');
+    }
+}
+
+// === ВІДПОВІДЬ БОТА ===
+async function getBotResponse(text) {
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: text })
+        });
+        const data = await res.json();
+        return data.response || "⚠️ Немає відповіді";
+    } catch {
+        return "⚠️ Помилка з'єднання.";
+    }
+}
+
+// === ЗБЕРЕЖЕННЯ ІСТОРІЇ ===
+function saveChatHistory() {
+    const msgs = Array.from(chat.children).map(div => ({
+        text: div.textContent,
+        type: div.classList.contains("user") ? "user" : "bot"
+    }));
+    localStorage.setItem("chatHistory", JSON.stringify(msgs));
 }
 </script>
 </body>
